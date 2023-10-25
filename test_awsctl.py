@@ -2,7 +2,7 @@ import json
 import os
 import pytest
 from jsonschema import validate, exceptions
-from main import config_schema
+from awsctl import config_schema
 
 
 def get_all_json_schema_tests():
