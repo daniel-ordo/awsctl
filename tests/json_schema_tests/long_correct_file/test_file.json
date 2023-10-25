@@ -1,0 +1,19 @@
+{
+        "contexts": [
+                {
+                        "name": "aws-qa",
+                        "region": "us-west-1",
+                        "profile": "name_of_profile1"
+                },
+                {
+                        "name": "aws-uat",
+                        "region": "us-east-1",
+                        "profile": "name_of_profile2"
+                },
+                {
+                        "name": "aws-stage",
+                        "region": "us-east-1",
+                        "profile": "name_of_profile3"
+                }
+        ]
+}

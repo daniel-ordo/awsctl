@@ -1,0 +1,10 @@
+{
+        "contexts": [
+                {
+                        "name": "aws-qa",
+                        "region": "us-west-1",
+                        "profile": "name_of_profile"
+                }
+        ],
+        "current_context": "some_context"
+}

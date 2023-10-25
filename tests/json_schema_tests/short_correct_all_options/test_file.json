@@ -1,0 +1,11 @@
+{
+        "contexts": [
+                {
+                        "name": "context",
+                        "region": "us-west-1",
+                        "profile": "name_of_profile",
+                        "login_script": "aws config"
+                }
+        ],
+        "current_context": "context"
+}
