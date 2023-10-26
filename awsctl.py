@@ -4,6 +4,7 @@ import json
 import os
 import sys
 import re
+# import boto3
 import click
 from jsonschema import validate, exceptions
 
@@ -19,7 +20,8 @@ config_schema = {
                     "name": {"type": "string"},
                     "region": {"type": "string"},
                     "profile": {"type": "string"},
-                    "login_script": {"type": "string"}
+                    "login_script": {"type": "string"},
+                    "default_name_selector": {"type": "string"}
                 },
                 "required": ["name", "region", "profile"],
             }
@@ -36,8 +38,8 @@ class InvalidMenuConfigurationParameter(Exception):
 
 
 class Configuration(object):
-    def __init__(self, config_path):
-        self._config_path = config_path
+    def __init__(self):
+        self._config_path = get_config_path()
         self._read_config()
 
     def _read_config(self):
@@ -61,6 +63,13 @@ class Configuration(object):
         except exceptions.ValidationError as ex:
             print(str(ex), file=sys.stderr)
             return False
+
+    def get_current_context(self):
+        if "current_context" in self._running_config:
+            return self._running_config["current_context"]
+        else:
+            print("Current context is not set. Exiting...", file=sys.stderr)
+            sys.exit(1)
 
     def set_current_context(self, new_context):
         found_context = False
@@ -181,15 +190,23 @@ class Configuration(object):
 
 
 class AwsCtl(object):
-    def __init__(self, config_path=None):
-        if config_path:
-            self._config_path = config_path
-        else:
-            self._config_path = os.path.join(os.path.expanduser("~"), ".awsctl.conf.json")
-        self._config = Configuration(self._config_path)
+    def __init__(self):
+        self._config_path = get_config_path()
+        self._config = Configuration()
+        self._context = self._config.get_current_context()
 
     def configure_access(self):
         self._config.configure()
+
+    # def get_
+
+
+def get_config_path():
+    if os.environ.get("AWSCTL_CONFIG"):
+        config_path = os.environ.get("AWSCTL_CONFIG")
+    else:
+        config_path = os.path.join(os.path.expanduser("~"), ".awsctl.conf.json")
+    return config_path
 
 
 @click.group()
@@ -199,8 +216,7 @@ def configs():
 
 @configs.command()
 def configure():
-    config_path = os.path.join(os.path.expanduser("~"), ".awsctl.conf.json")
-    Configuration(config_path).configure()
+    Configuration().configure()
 
 
 @click.group()
@@ -211,11 +227,16 @@ def context_group():
 @context_group.command()
 @click.argument("new_context")
 def use_context(new_context):
-    config_path = os.path.join(os.path.expanduser("~"), ".awsctl.conf.json")
-    Configuration(config_path).set_current_context(new_context)
+    Configuration().set_current_context(new_context)
+
+
+@click.group()
+def getters():
+    pass
 
 
 cli = click.CommandCollection(sources=[configs, context_group])
+
 
 if __name__ == "__main__":
     cli()
