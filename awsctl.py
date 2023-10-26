@@ -4,7 +4,7 @@ import json
 import os
 import sys
 import re
-# import boto3
+import boto3
 import click
 from jsonschema import validate, exceptions
 
@@ -38,9 +38,10 @@ class InvalidMenuConfigurationParameter(Exception):
 
 
 class Configuration(object):
-    def __init__(self):
+    def __init__(self, current_context_name=None):
         self._config_path = get_config_path()
         self._read_config()
+        self._current_context_name = current_context_name
 
     def _read_config(self):
         if os.path.exists(self._config_path):
@@ -65,13 +66,30 @@ class Configuration(object):
             return False
 
     def get_current_context(self):
-        if "current_context" in self._running_config:
+        if "current_context" in self._running_config: # if current_context is set in file
             return self._running_config["current_context"]
+        elif self._current_context_name:
+            return self._current_context_name
         else:
             print("Current context is not set. Exiting...", file=sys.stderr)
             sys.exit(1)
 
-    def set_current_context(self, new_context):
+    def _get_current_context_config(self):
+        if "current_context" in self._running_config:
+            current_context = self._running_config["current_context"]
+            for context in self._running_config.get("contexts"):
+                if context["name"] == current_context:
+                    return context
+
+    # def login_to_current_context(self):
+    #
+    #     session = boto3.Session(profile_name=)
+
+
+    def set_current_context(self, new_context=None):
+        if not new_context:
+            new_context = self._current_context_name
+
         found_context = False
         for context in self._running_config.get("contexts"):
             if new_context == context["name"]:
