@@ -4,6 +4,7 @@ import json
 import os
 import sys
 import re
+import click
 from jsonschema import validate, exceptions
 
 
@@ -28,6 +29,7 @@ config_schema = {
     "required": ["contexts"]
 }
 
+
 class InvalidMenuConfigurationParameter(Exception):
     "Raised when user specified wrong parameter in menu"
     pass
@@ -40,7 +42,8 @@ class Configuration(object):
 
     def _read_config(self):
         if os.path.exists(self._config_path):
-            self._running_config = json.load(self._config_path)
+            with open(self._config_path, 'r') as fp:
+                self._running_config = json.load(fp)
         else:
             self._running_config = {}
 
@@ -58,6 +61,21 @@ class Configuration(object):
         except exceptions.ValidationError as ex:
             print(str(ex), file=sys.stderr)
             return False
+
+    def set_current_context(self, new_context):
+        found_context = False
+        for context in self._running_config.get("contexts"):
+            if new_context == context["name"]:
+                found_context = True
+
+        if found_context:
+            self._running_config["current_context"] = new_context
+            self._write_running_config()
+            print(f"Switched to context: {new_context}")
+        else:
+            contexts = [context["name"] for context in self._running_config.get("contexts")]
+            print(f"Specified context: {new_context} was not found", file=sys.stderr)
+            print(f"Consider using one of the following: {', '.join(contexts)}", file=sys.stderr)
 
     def _print_menu(self):
         print("What would you like to do?\n"
@@ -148,6 +166,9 @@ class Configuration(object):
             context_names = [context["name"] for context in self._running_config["contexts"]]
             answer = input("What element would you like to modify " + ", ".join(context_names) + "?").strip()
 
+            if not answer and len(context_names) == 1:
+                answer = context_names[0]
+
             if answer in context_names:
                 context_index_to_modify = context_names.index(answer)
                 context = self._running_config["contexts"][context_index_to_modify]
@@ -164,13 +185,38 @@ class AwsCtl(object):
         if config_path:
             self._config_path = config_path
         else:
-            self._config_path = os.path.expanduser("~")
+            self._config_path = os.path.join(os.path.expanduser("~"), ".awsctl.conf.json")
         self._config = Configuration(self._config_path)
 
+    def configure_access(self):
+        self._config.configure()
 
-def main(argv=None):
+
+@click.group()
+def configs():
     pass
 
 
+@configs.command()
+def configure():
+    config_path = os.path.join(os.path.expanduser("~"), ".awsctl.conf.json")
+    Configuration(config_path).configure()
+
+
+@click.group()
+def context_group():
+    pass
+
+
+@context_group.command()
+@click.argument("new_context")
+def use_context(new_context):
+    config_path = os.path.join(os.path.expanduser("~"), ".awsctl.conf.json")
+    Configuration(config_path).set_current_context(new_context)
+
+
+cli = click.CommandCollection(sources=[configs, context_group])
+
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+    cli()
+
